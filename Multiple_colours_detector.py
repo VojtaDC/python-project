@@ -147,4 +147,4 @@ if __name__ == "__main__":
     cap.release()
     cv2.destroyAllWindows()
     
-    #Voor centreren: centerlines --> Lloris zegt: vindt een vorm en pakt dan het midden van de vorm 
+    #Voor centreren: centerlines --> Lloris zegt: vindt een vorm en pakt dan het midden van de vorm git config --global --edit

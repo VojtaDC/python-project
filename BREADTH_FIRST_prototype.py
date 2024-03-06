@@ -32,7 +32,6 @@ def breadth_first(crop, start,end):
     
     return distances
 
-# Print the shortest path
 def print_shortest_path(distances, start, end):
     for row in distances:
         row_as_strings = []
@@ -59,8 +58,6 @@ def print_shortest_path(distances, start, end):
     # Reverse the path so it goes from start to end
     path.reverse()
     return path
-    # Print the path
-    
         
 
     # for x, y in path:
