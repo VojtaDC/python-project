@@ -12,7 +12,7 @@ def breadth_first(crop, start,end):
         
     distances[start[0]][start[1]] = 0  # The distance to the start position is 0
     
-    # The possible movements from a cell
+    # Mogelijke stappen: R/D/L/U
     movements = [(0, 1), (1, 0), (0, -1), (-1, 0)]
     
     while not q.empty():
@@ -37,7 +37,8 @@ def print_shortest_path(distances, start, end):
         row_as_strings = []
         for cell in row:
             row_as_strings.append(str(cell))
-        # print(' '.join(row_as_strings))
+        # print(' '.join(row_as_strings)) 
+        # Dit was er eerst om de distances matrix te printen (nu niet meer nodig)
     x, y = end
     path = [(x, y)]
     

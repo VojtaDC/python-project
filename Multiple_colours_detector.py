@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Feb  9 20:14:49 2021
 
-@author: bkeelson
-"""
 import numpy as np
 import cv2 
-# from BREADTH_FIRST_prototype import *
 import BREADTH_FIRST_prototype as bf
-#import testklik
+
 
 
 test_hue = None
