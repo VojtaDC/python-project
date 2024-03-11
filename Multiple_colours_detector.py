@@ -52,16 +52,16 @@ def color_ranges(test_color):
         
         return lower_red, upper_red, None, None
     
-def find_closest_skeleton_point_with_kdtree(path, skeleton):
-    # Get the coordinates of all skeleton points
-    skeleton_points = np.argwhere(skeleton == 1)
+def find_closest_skeleton_point_with_kdtree(path, muurskelet):
+    # Get the coordinates of all muurskelet points
+    skeleton_points = np.argwhere(muurskelet == 1)
 
     # Create a KDTree
     tree = KDTree(skeleton_points)
 
     closest_points = []
     for path_point in path:
-        # Query the KDTree to find the closest skeleton point
+        # Query the KDTree to find the closest muurskelet point
         distance, index = tree.query(path_point)
         closest_skeleton_point = tuple(skeleton_points[index])
         closest_points.append(closest_skeleton_point)
@@ -129,17 +129,16 @@ if __name__ == "__main__":
     # Crop the image to the found coordinates
     crop = red_mask[y+30:y+h-30, x+30:x+w-30]
     crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
-    anticrop = np.logical_not(crop)
     # Skeletonize the image
-    skeleton = skeletonize(anticrop)
-    skeleton = (skeleton.astype(np.uint8))
-    inverse_skeleton = np.logical_not(skeleton)
+    muurskelet = skeletonize(crop)
+    muurskelet = (muurskelet.astype(np.uint8))
+    padskelet = skeletonize(np.logical_not(crop))
     
-    second_kernel = np.ones((7,7), np.uint8)
-    skeleton = cv2.dilate(skeleton, second_kernel, iterations=1)
+    second_kernel = np.ones((5,5), np.uint8)
+    padskelet = cv2.dilate(muurskelet, second_kernel, iterations=1)
     
     
-    # cv2.imshow("Video Feed", inverse_skeleton)
+    # cv2.imshow("Video Feed",     padskelet)
     
     # cv2.waitKey(300000000)
     start = (len(crop)//2,0)
@@ -148,24 +147,20 @@ if __name__ == "__main__":
     print("end zonder skel = ", end)
    
     
-    start = find_closest_skeleton_point_with_kdtree([start], skeleton)[0]
+    start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0]
     print("start = ", start)
-    end = find_closest_skeleton_point_with_kdtree([end], skeleton)[0]
+    end = find_closest_skeleton_point_with_kdtree([end], padskelet)[0]
     
-    print("end = ", end, inverse_skeleton[end[0]][end[1]], skeleton[end[0]][end[1]])
+    print("end = ", end, muurskelet[end[0]][end[1]], padskelet[end[0]][end[1]])
+    padskelet()
     start_time = time.time()
-    distances = bf.breadth_first(inverse_skeleton, start, end)
-    for i in range(len(distances)):
-        for a in range(len(distances[i])):
-            if distances[i][a] != -1:
-                print(distances[i][a])
-
+    distances = bf.breadth_first(padskelet, start, end)
     elapsed_time = time.time() - start_time
     print(f"Elapsed time: {elapsed_time} seconds")
 
     print(len(distances))
     path = bf.print_shortest_path(distances, start, end)
-    # path = find_closest_skeleton_point_with_kdtree(path, skeleton)
+    # path = find_closest_skeleton_point_with_kdtree(path, muurskelet)
     print('jep')
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
     print(len(path))
