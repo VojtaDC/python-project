@@ -53,9 +53,9 @@ def color_ranges(test_color):
         
         return lower_red, upper_red, None, None
     
-def find_closest_skeleton_point_with_kdtree(path, muurskelet):
+def find_closest_skeleton_point_with_kdtree(path, padskelet):
     # Get the coordinates of all muurskelet points
-    skeleton_points = np.argwhere(muurskelet == 255)
+    skeleton_points = np.argwhere(padskelet == 255)
 
     # Create a KDTree
     tree = KDTree(skeleton_points)
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     red_mask = cv2.erode(red_mask, kernel, iterations=1)
     red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
     red_mask = cv2.dilate(red_mask, kernel, iterations=10)
-    red_mask = cv2.erode(red_mask, kernel, iterations=5)
+    red_mask = cv2.erode(red_mask, kernel, iterations=7)
 
     
     
@@ -146,7 +146,8 @@ if __name__ == "__main__":
    
     start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
     end = find_closest_skeleton_point_with_kdtree([end], padskelet_final)[0] #end projecteren op padskelet
-
+    
+    
     start_time = time.time()
     distances = bf.breadth_first(padskelet_final, start, end)
     elapsed_time = time.time() - start_time
