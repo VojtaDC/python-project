@@ -12,6 +12,7 @@ import BREADTH_FIRST_prototype as bf
 #import testklik
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
+import time
 
 test_hue = None
 
@@ -53,7 +54,7 @@ def color_ranges(test_color):
     
 def find_closest_skeleton_point_with_kdtree(path, skeleton):
     # Get the coordinates of all skeleton points
-    skeleton_points = np.argwhere(skeleton == 255)
+    skeleton_points = np.argwhere(skeleton == 1)
 
     # Create a KDTree
     tree = KDTree(skeleton_points)
@@ -126,28 +127,52 @@ if __name__ == "__main__":
     x, y, w, h = cv2.boundingRect(coords)
 
     # Crop the image to the found coordinates
-    crop = red_mask[y:y+h, x:x+w]
+    crop = red_mask[y+30:y+h-30, x+30:x+w-30]
     crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
     anticrop = np.logical_not(crop)
     # Skeletonize the image
     skeleton = skeletonize(anticrop)
-    skeleton = (skeleton.astype(np.uint8))*255
+    skeleton = (skeleton.astype(np.uint8))
+    inverse_skeleton = np.logical_not(skeleton)
+    
+    second_kernel = np.ones((7,7), np.uint8)
+    skeleton = cv2.dilate(skeleton, second_kernel, iterations=1)
     
     
-    cv2.imshow("Video Feed", skeleton)
+    # cv2.imshow("Video Feed", inverse_skeleton)
     
-    cv2.waitKey(300000000)
+    # cv2.waitKey(300000000)
+    start = (len(crop)//2,0)
+    print("start zonder skel= ", start)
+    end = (len(crop)//2, round(len(crop[0])*(174/179)))
+    print("end zonder skel = ", end)
+   
     
-    distances = bf.breadth_first(crop, (len(crop)//2,0), (len(crop)//2,len(crop[0])) )
-    path = bf.print_shortest_path(distances, (len(crop)//2,0), (len(crop)//2, round(len(crop[0])*(174/179)) ))
-    middle_path = find_closest_skeleton_point_with_kdtree(path, skeleton)
+    start = find_closest_skeleton_point_with_kdtree([start], skeleton)[0]
+    print("start = ", start)
+    end = find_closest_skeleton_point_with_kdtree([end], skeleton)[0]
     
+    print("end = ", end, inverse_skeleton[end[0]][end[1]], skeleton[end[0]][end[1]])
+    start_time = time.time()
+    distances = bf.breadth_first(inverse_skeleton, start, end)
+    for i in range(len(distances)):
+        for a in range(len(distances[i])):
+            if distances[i][a] != -1:
+                print(distances[i][a])
+
+    elapsed_time = time.time() - start_time
+    print(f"Elapsed time: {elapsed_time} seconds")
+
+    print(len(distances))
+    path = bf.print_shortest_path(distances, start, end)
+    # path = find_closest_skeleton_point_with_kdtree(path, skeleton)
+    print('jep')
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
     print(len(path))
-    for i in range(len(middle_path) - 1):
-        x , y = middle_path[i]
+    for i in range(len(path) - 1):
+        x , y = path[i]
         point1 = (int(y), int(x))
-        x , y = middle_path[i + 1]
+        x , y = path[i + 1]
         point2 = (int(y), int(x))
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 2)
