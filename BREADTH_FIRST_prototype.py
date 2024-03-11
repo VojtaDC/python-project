@@ -30,7 +30,7 @@ def breadth_first(crop, start,end):
             nx, ny = x + dx, y + dy
             
             # Check if the new position is inside the crop and is a path (0)
-            if 0 <= nx < len(crop) and 0 <= ny < len(crop[0]) and crop[nx][ny] == 0 and distances[nx][ny] == -1: #check of binnen de crop (horizontaal en verticaal) EN geen muur EN onbezocht
+            if 0 <= nx < len(crop) and 0 <= ny < len(crop[0]) and crop[nx][ny] == 255 and distances[nx][ny] == -1: #check of binnen de crop (horizontaal en verticaal) EN geen muur EN onbezocht
                 distances[nx][ny] = distances[x][y] + 1
                 q.put((nx, ny))
     

@@ -13,7 +13,6 @@ import BREADTH_FIRST_prototype as bf
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
 import time
-#hahahahahahhahaha
 
 test_hue = None
 
@@ -54,7 +53,7 @@ def color_ranges(test_color):
     
 def find_closest_skeleton_point_with_kdtree(path, muurskelet):
     # Get the coordinates of all muurskelet points
-    skeleton_points = np.argwhere(muurskelet == 1)
+    skeleton_points = np.argwhere(muurskelet == 255)
 
     # Create a KDTree
     tree = KDTree(skeleton_points)
@@ -130,29 +129,29 @@ if __name__ == "__main__":
     crop = red_mask[y+30:y+h-30, x+30:x+w-30]
     crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
     # Skeletonize the image
+    padcrop = np.logical_not(crop)
+    padskelet = skeletonize(padcrop)
+    padskelet_int = (padskelet.astype(np.uint8))*255
+    
+    
     muurskelet = skeletonize(crop)
     muurskelet = (muurskelet.astype(np.uint8))
-    padskelet = skeletonize(np.logical_not(crop))
     
-    padskelet = cv2.dilate(muurskelet, kernel, iterations=1)
-    
+    padskelet_final = cv2.dilate(padskelet_int, kernel, iterations=1)
     
     # cv2.imshow("Video Feed",     padskelet)
     
     # cv2.waitKey(300000000)
     start = (len(crop)//2,0)
-    print("start zonder skel= ", start)
     end = (len(crop)//2, round(len(crop[0])*(174/179)))
-    print("end zonder skel = ", end)
    
-    
-    start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0]
+    start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
     print("start = ", start)
-    end = find_closest_skeleton_point_with_kdtree([end], padskelet)[0]
+    end = find_closest_skeleton_point_with_kdtree([end], padskelet_final)[0] #end projecteren op padskelet
+    print("end = ", end, muurskelet[end[0]][end[1]], padskelet_final[end[0]][end[1]])
     
-    print("end = ", end, muurskelet[end[0]][end[1]], padskelet[end[0]][end[1]])
     start_time = time.time()
-    distances = bf.breadth_first(padskelet, start, end)
+    distances = bf.breadth_first(padskelet_final, start, end)
     elapsed_time = time.time() - start_time
     print(f"Elapsed time: {elapsed_time} seconds")
 
