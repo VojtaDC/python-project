@@ -143,21 +143,15 @@ if __name__ == "__main__":
     end = (len(crop)//2, round(len(crop[0])*(174/179)))
    
     start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
-    print("start = ", start)
     end = find_closest_skeleton_point_with_kdtree([end], padskelet_final)[0] #end projecteren op padskelet
-    print("end = ", end, muurskelet[end[0]][end[1]], padskelet_final[end[0]][end[1]])
-    
-    start_time = time.time()
-    distances = bf.breadth_first(padskelet_final, start, end)
-    elapsed_time = time.time() - start_time
-    print(f"Elapsed time: {elapsed_time} seconds")
 
-    print(len(distances))
+    distances = bf.breadth_first(padskelet_final, start, end)
     path = bf.print_shortest_path(distances, start, end)
-    # path = find_closest_skeleton_point_with_kdtree(path, muurskelet)
-    print('jep')
+
+
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
-    print(len(path))
+
+
     for i in range(len(path) - 1):
         x , y = path[i]
         point1 = (int(y), int(x))
