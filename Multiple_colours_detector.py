@@ -16,6 +16,8 @@ import time
 
 test_hue = None
 
+# Dit is de nieuwe 21u20
+
 # Functie die wordt aangeroepen bij muisklik
 def get_position(event, x, y, flags, color):
     global test_hue
@@ -145,7 +147,11 @@ if __name__ == "__main__":
     start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
     end = find_closest_skeleton_point_with_kdtree([end], padskelet_final)[0] #end projecteren op padskelet
 
+    start_time = time.time()
     distances = bf.breadth_first(padskelet_final, start, end)
+    elapsed_time = time.time() - start_time
+    print(f"Elapsed time: {elapsed_time} seconds")
+    
     path = bf.print_shortest_path(distances, start, end)
 
 
@@ -159,6 +165,7 @@ if __name__ == "__main__":
         point2 = (int(y), int(x))
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 2)
+        
     # Bepaal de grootte van de tekst
     (text_width, text_height) = cv2.getTextSize("KLIK OP START", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
 
