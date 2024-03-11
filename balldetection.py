@@ -21,5 +21,6 @@ while True:
     #plt.show()
     cv2.imshow("Frame", img)
     if cv2.waitKey(1) & 0xFF == ord('q'): break
+    
 cap.release()
 cv2.destroyAllWindows()

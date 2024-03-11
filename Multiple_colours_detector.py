@@ -1,22 +1,18 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
 """
 Created on Tue Feb  9 20:14:49 2021
 
-@author: bkeelson
+@authors: Stefan en Vojta
 """
-import numpy as np
+import time
 import cv2 
-# from BREADTH_FIRST_prototype import *
+import serial
+import numpy as np
 import BREADTH_FIRST_prototype as bf
-#import testklik
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
-import time
 
 test_hue = None
-
-# Dit is de nieuwe 21u20
 
 # Functie die wordt aangeroepen bij muisklik
 def get_position(event, x, y, flags, color):
@@ -54,15 +50,15 @@ def color_ranges(test_color):
         return lower_red, upper_red, None, None
     
 def find_closest_skeleton_point_with_kdtree(path, padskelet):
-    # Get the coordinates of all muurskelet points
+    # Neem alle punten van padskelet 
     skeleton_points = np.argwhere(padskelet == 255)
 
-    # Create a KDTree
+    # Maak een KDTree
     tree = KDTree(skeleton_points)
 
     closest_points = []
     for path_point in path:
-        # Query the KDTree to find the closest muurskelet point
+        # Vind het dichtsbijzijnde padskelet punt
         distance, index = tree.query(path_point)
         closest_skeleton_point = tuple(skeleton_points[index])
         closest_points.append(closest_skeleton_point)
@@ -120,8 +116,6 @@ if __name__ == "__main__":
     red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
     red_mask = cv2.dilate(red_mask, kernel, iterations=10)
     red_mask = cv2.erode(red_mask, kernel, iterations=7)
-
-    
     
     # Assuming red_mask is your image
     coords = cv2.findNonZero(red_mask)
@@ -202,8 +196,21 @@ if __name__ == "__main__":
     
     print('nu wachten we')
     cv2.waitKey(100000)
-    # When everything done, release the capture
     
     cv2.destroyAllWindows()
     
     #Voor centreren: centerlines --> Lloris zegt: vindt een vorm en pakt dan het midden van de vorm git config --global --edit
+
+# Voor communicatie met microcontroller: 
+import serial
+
+# Maak verbinding met de seriële poort
+ser = serial.Serial('COM-poort', 9600)  # Vervang 'COM-poort' door jouw poort
+
+def verstuur_coordinaten(x, y):
+    coord_string = f"{x},{y}\n"  # Formatteer de coördinaten als een string
+    ser.write(coord_string.encode())  # Verstuur de coördinaten
+
+# In je hoofdprogramma, na het vinden van de coördinaten:
+#x, y = vind_centrum(frame)
+verstuur_coordinaten(x, y)
