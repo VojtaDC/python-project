@@ -15,7 +15,6 @@ from scipy.spatial import KDTree
 import time
 
 test_hue = None
-#Dit is de alllllernieuwste branch
 
 # Functie die wordt aangeroepen bij muisklik
 def get_position(event, x, y, flags, color):
@@ -134,8 +133,7 @@ if __name__ == "__main__":
     muurskelet = (muurskelet.astype(np.uint8))
     padskelet = skeletonize(np.logical_not(crop))
     
-    second_kernel = np.ones((5,5), np.uint8)
-    padskelet = cv2.dilate(muurskelet, second_kernel, iterations=1)
+    padskelet = cv2.dilate(muurskelet, kernel, iterations=1)
     
     
     # cv2.imshow("Video Feed",     padskelet)
@@ -152,7 +150,6 @@ if __name__ == "__main__":
     end = find_closest_skeleton_point_with_kdtree([end], padskelet)[0]
     
     print("end = ", end, muurskelet[end[0]][end[1]], padskelet[end[0]][end[1]])
-    padskelet()
     start_time = time.time()
     distances = bf.breadth_first(padskelet, start, end)
     elapsed_time = time.time() - start_time
