@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Created on Tue Feb  9 20:14:49 2021
 
+@author: bkeelson
+"""
 import numpy as np
 import cv2 
+# from BREADTH_FIRST_prototype import *
 import BREADTH_FIRST_prototype as bf
-
+#import testklik
 
 
 test_hue = None
@@ -16,6 +21,7 @@ def get_position(event, x, y, flags, color):
     if event == cv2.EVENT_LBUTTONDOWN:  # Als er op de linkermuisknop wordt geklikt
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)  # Converteer het frame naar HSV
         color = hsv[y, x]  # Haal de kleur op van de pixel waarop is geklikt
+        global test_hue
         test_hue = color[0]
         print(color)
         
@@ -56,17 +62,18 @@ if __name__ == "__main__":
     #######
     
     # setup webcam feed 
-    cap = cv2.VideoCapture(0)  # Change this line to capture video from webcam
+    # cap = cv2.VideoCapture(0)  # Change this line to capture video from webcam
     
     kernel = np.ones((5,5), np.uint8)
     
-    # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
-    ret, foto = cap.read()
+    # # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
+    # ret, foto = cap.read()
+    foto = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/TestNieuwekleuren.jpg')
     frame = cv2.GaussianBlur(foto, (5,5), 0)
     
     while test_hue is None:
         
-        _, frame = cap.read()
+        # _, frame = cap.read()
         
         #cv2.imshow("Frame", frame)
         cv2.imshow("Video Feed", frame)
@@ -111,10 +118,14 @@ if __name__ == "__main__":
     path = bf.print_shortest_path(distances, (len(crop)//2,0), (len(crop)//2, round(len(crop[0])*(174/179)) ))
     
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
-    
-    for element in path:
-        x,y = element
-        cv2.circle(color_frame, (y,x), 2,(0,0,255))
+    print(len(path))
+    for i in range(len(path) - 1):
+        x , y = path[i]
+        point1 = (int(y), int(x))
+        x , y = path[i + 1]
+        point2 = (int(y), int(x))
+        cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
+        cv2.circle(color_frame, point1, 4, (0,255,0), 2)
     
     cv2.imshow("Video Feed", color_frame)
     
