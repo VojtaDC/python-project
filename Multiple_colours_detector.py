@@ -85,7 +85,7 @@ if __name__ == "__main__":
     
     # # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
     # ret, foto = cap.read()
-    foto = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/TestNieuwekleuren.jpg')
+    foto = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
     frame = cv2.GaussianBlur(foto, (5,5), 0)
     
     while test_hue is None:
@@ -126,16 +126,13 @@ if __name__ == "__main__":
     x, y, w, h = cv2.boundingRect(coords)
 
     # Crop the image to the found coordinates
-    crop = red_mask[y+30:y+h-30, x+30:x+w-30]
+    crop = red_mask[y:y+h, x:x+w]
     crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
+    
     # Skeletonize the image
     padcrop = np.logical_not(crop)
     padskelet = skeletonize(padcrop)
     padskelet_int = (padskelet.astype(np.uint8))*255
-    
-    
-    muurskelet = skeletonize(crop)
-    muurskelet = (muurskelet.astype(np.uint8))
     
     padskelet_final = cv2.dilate(padskelet_int, kernel, iterations=1)
     
@@ -168,7 +165,19 @@ if __name__ == "__main__":
         point2 = (int(y), int(x))
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 2)
-    
+    # Bepaal de grootte van de tekst
+    (text_width, text_height) = cv2.getTextSize("KLIK OP START", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
+
+    # Bepaal de positie van de tekst
+    text_x = int(len(crop[0])*0.4)
+    text_y = len(crop)//2
+
+    # Teken een zwarte rechthoek achter de tekst
+    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 5, text_y - text_height - 5), (0, 0, 255), -1)
+
+    # Teken de tekst over de rechthoek
+    cv2.putText(color_frame, "KLIK OP START", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
+
     cv2.imshow("Video Feed", color_frame)
     
     
@@ -192,7 +201,7 @@ if __name__ == "__main__":
     print('nu wachten we')
     cv2.waitKey(100000)
     # When everything done, release the capture
-    cap.release()
+    
     cv2.destroyAllWindows()
     
     #Voor centreren: centerlines --> Lloris zegt: vindt een vorm en pakt dan het midden van de vorm git config --global --edit
