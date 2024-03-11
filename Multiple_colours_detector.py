@@ -10,7 +10,8 @@ import cv2
 # from BREADTH_FIRST_prototype import *
 import BREADTH_FIRST_prototype as bf
 #import testklik
-
+from skimage.morphology import skeletonize
+from scipy.spatial import KDTree
 
 test_hue = None
 
@@ -49,6 +50,22 @@ def color_ranges(test_color):
         upper_red = np.array([test_hue+15, 255, 255])
         
         return lower_red, upper_red, None, None
+    
+def find_closest_skeleton_point_with_kdtree(path, skeleton):
+    # Get the coordinates of all skeleton points
+    skeleton_points = np.argwhere(skeleton == 255)
+
+    # Create a KDTree
+    tree = KDTree(skeleton_points)
+
+    closest_points = []
+    for path_point in path:
+        # Query the KDTree to find the closest skeleton point
+        distance, index = tree.query(path_point)
+        closest_skeleton_point = tuple(skeleton_points[index])
+        closest_points.append(closest_skeleton_point)
+
+    return closest_points
     
     
         
@@ -99,7 +116,9 @@ if __name__ == "__main__":
     # Generating the final mask to detect red color
     red_mask = cv2.erode(red_mask, kernel, iterations=1)
     red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
-    red_mask = cv2.dilate(red_mask, kernel, iterations=2)
+    red_mask = cv2.dilate(red_mask, kernel, iterations=10)
+    red_mask = cv2.erode(red_mask, kernel, iterations=5)
+
     
     
     # Assuming red_mask is your image
@@ -109,20 +128,26 @@ if __name__ == "__main__":
     # Crop the image to the found coordinates
     crop = red_mask[y:y+h, x:x+w]
     crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
+    anticrop = np.logical_not(crop)
+    # Skeletonize the image
+    skeleton = skeletonize(anticrop)
+    skeleton = (skeleton.astype(np.uint8))*255
     
-    cv2.imshow("Video Feed", crop)
     
-    cv2.waitKey(1)
+    cv2.imshow("Video Feed", skeleton)
+    
+    cv2.waitKey(300000000)
     
     distances = bf.breadth_first(crop, (len(crop)//2,0), (len(crop)//2,len(crop[0])) )
     path = bf.print_shortest_path(distances, (len(crop)//2,0), (len(crop)//2, round(len(crop[0])*(174/179)) ))
+    middle_path = find_closest_skeleton_point_with_kdtree(path, skeleton)
     
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
     print(len(path))
-    for i in range(len(path) - 1):
-        x , y = path[i]
+    for i in range(len(middle_path) - 1):
+        x , y = middle_path[i]
         point1 = (int(y), int(x))
-        x , y = path[i + 1]
+        x , y = middle_path[i + 1]
         point2 = (int(y), int(x))
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 2)
