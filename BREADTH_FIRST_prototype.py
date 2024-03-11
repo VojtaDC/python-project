@@ -1,6 +1,10 @@
 import queue
+import shapely
+from shapely.geometry import LineString
+
 
 def breadth_first(crop, start,end):
+    
     # Initialize the queue with the start position
     q = queue.Queue()
     q.put(start)
@@ -26,7 +30,7 @@ def breadth_first(crop, start,end):
             nx, ny = x + dx, y + dy
             
             # Check if the new position is inside the crop and is a path (0)
-            if 0 <= nx < len(crop) and 0 <= ny < len(crop[0]) and crop[nx][ny] == 0 and distances[nx][ny] == -1: #check of binnen de crop (horizontaal en verticaal) EN geen muur EN onbezocht
+            if 0 <= nx < len(crop) and 0 <= ny < len(crop[0]) and crop[nx][ny] == 255 and distances[nx][ny] == -1: #check of binnen de crop (horizontaal en verticaal) EN geen muur EN onbezocht
                 distances[nx][ny] = distances[x][y] + 1
                 q.put((nx, ny))
     
@@ -58,9 +62,24 @@ def print_shortest_path(distances, start, end):
     
     # Reverse the path so it goes from start to end
     path.reverse()
-    return path
+    # def simplify_path(path, tolerance=1.0):
+    #     # Convert path to LineString object
+    #     line = LineString(path)
         
+    #     # Simplify the line
+    #     simplified_line = line.simplify(tolerance, preserve_topology=False)
+        
+    #     # Convert simplified line back to list of tuples
+    #     simplified_path = list(simplified_line.coords)
+        
+    #     return simplified_path
 
+
+    # simplified_path = simplify_path(path)
+    # return simplified_path
+    return path
+
+        
     # for x, y in path:
     #     print(f"({x}, {y})")
 
@@ -72,7 +91,7 @@ def print_shortest_path(distances, start, end):
 #     [1, 0, 1, 0, 0, 0, 1, 0, 1, 1],
 #     [1, 0, 1, 0, 1, 0, 0, 0, 0, 1],
 #     [1, 0, 0, 0, 1, 1, 1, 1, 0, 1],
-#     [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+#     [1, 1, 1, 1, 1, 0, 0, 0, 0, 1d],
 #     [1, 0, 0, 0, 0, 0, 1, 1, 1, 1],
 #     [1, 0, 1, 1, 1, 0, 0, 0, 0, 1],
 #     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1]
