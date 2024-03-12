@@ -6,13 +6,14 @@ Created on Tue Feb  9 20:14:49 2021
 """
 import time
 import cv2 
-import serial
 import numpy as np
 import BREADTH_FIRST_prototype as bf
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
 
 test_hue = None
+start = None
+end = None
 
 # Functie die wordt aangeroepen bij muisklik
 def get_position(event, x, y, flags, color):
@@ -23,7 +24,20 @@ def get_position(event, x, y, flags, color):
         global test_hue
         test_hue = color[0]
         print(color)
-        
+
+def pos_start(event, x, y, flags, color):
+    global start
+    if event == cv2.EVENT_LBUTTONDOWN:  # Als er op de linkermuisknop wordt geklikt
+        global start
+        start = (y, x)
+
+
+def pos_end(event, x, y, flags, color):
+    global end
+    if event == cv2.EVENT_LBUTTONDOWN:
+        global end
+        end = (y, x)
+
 def color_ranges(test_color):
     if test_hue > 165:
         lower_red = np.array([0, 50, 20]) 
@@ -83,7 +97,7 @@ if __name__ == "__main__":
     
     # # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
     # ret, foto = cap.read()
-    foto = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
+    foto = cv2.imread("C:/Users/stefa/Documents/VUB/BA 2/EIT project/TestNieuwekleuren.jpg")
     frame = cv2.GaussianBlur(foto, (5,5), 0)
     
     while test_hue is None:
@@ -133,11 +147,44 @@ if __name__ == "__main__":
     padskelet_final = cv2.dilate(padskelet_int, kernel, iterations=1)
     
     # cv2.imshow("Video Feed",     padskelet)
+    #Roep functie op waar we begin en einde van de maze bepalen
+    cv2.setMouseCallback("Video Feed", pos_start)
     
-    # cv2.waitKey(300000000)
-    start = (len(crop)//2,0)
-    end = (len(crop)//2, round(len(crop[0])*(174/179)))
-   
+    # Bepaal de grootte van de tekst
+    (text_width, text_height) = cv2.getTextSize("KLIK OP START", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
+    
+    # Bepaal de positie van de tekst
+    text_x = int(len(crop[0])*0.4)
+    text_y = len(crop)//2
+
+    color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
+    # Teken een zwarte rechthoek achter de tekst
+    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 5, text_y - text_height - 5), (0, 0, 255), -1)
+    # Teken de tekst over de rechthoek
+    cv2.putText(color_frame, "KLIK OP START", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
+
+    while start is None:
+        #cv2.imshow("Frame", frame)
+        cv2.imshow("Video Feed", color_frame)
+        print('ja')
+        #to quit
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    print(start)
+    (text_width, text_height) = cv2.getTextSize("KLIK OP EINDE", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
+    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 5, text_y - text_height - 5), (0, 0, 255), -1)
+    cv2.putText(color_frame, "KLIK OP EINDE", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
+
+    cv2.setMouseCallback("Video Feed", pos_end)
+
+    while end is None:
+        #cv2.imshow("Frame", frame)
+        cv2.imshow("Video Feed", color_frame)
+        #to quit
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    print(end)
+    
     start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
     end = find_closest_skeleton_point_with_kdtree([end], padskelet_final)[0] #end projecteren op padskelet
     
@@ -160,23 +207,9 @@ if __name__ == "__main__":
         point2 = (int(y), int(x))
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 2)
-        
-    # Bepaal de grootte van de tekst
-    (text_width, text_height) = cv2.getTextSize("KLIK OP START", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
-
-    # Bepaal de positie van de tekst
-    text_x = int(len(crop[0])*0.4)
-    text_y = len(crop)//2
-
-    # Teken een zwarte rechthoek achter de tekst
-    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 5, text_y - text_height - 5), (0, 0, 255), -1)
-
-    # Teken de tekst over de rechthoek
-    cv2.putText(color_frame, "KLIK OP START", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
 
     cv2.imshow("Video Feed", color_frame)
-    
-    
+
     while False:
      
         #cv2.imshow("Frame", frame)
@@ -185,10 +218,6 @@ if __name__ == "__main__":
         # start = crop
         
         cv2.imshow("Video Feed", crop)
-        
-        
-         
-        
     
         #to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -202,15 +231,15 @@ if __name__ == "__main__":
     #Voor centreren: centerlines --> Lloris zegt: vindt een vorm en pakt dan het midden van de vorm git config --global --edit
 
 # Voor communicatie met microcontroller: 
-import serial
+# import serial
 
-# Maak verbinding met de seriële poort
-ser = serial.Serial('COM-poort', 9600)  # Vervang 'COM-poort' door jouw poort
+# # Maak verbinding met de seriële poort
+# ser = serial.Serial('COM-poort', 9600)  # Vervang 'COM-poort' door jouw poort
 
-def verstuur_coordinaten(x, y):
-    coord_string = f"{x},{y}\n"  # Formatteer de coördinaten als een string
-    ser.write(coord_string.encode())  # Verstuur de coördinaten
+# def verstuur_coordinaten(x, y):
+#     coord_string = f"{x},{y}\n"  # Formatteer de coördinaten als een string
+#     ser.write(coord_string.encode())  # Verstuur de coördinaten
 
-# In je hoofdprogramma, na het vinden van de coördinaten:
-#x, y = vind_centrum(frame)
-verstuur_coordinaten(x, y)
+# # In je hoofdprogramma, na het vinden van de coördinaten:
+# #x, y = vind_centrum(frame)
+# verstuur_coordinaten(x, y)
