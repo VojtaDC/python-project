@@ -62,23 +62,22 @@ def print_shortest_path(distances, start, end):
     
     # Reverse the path so it goes from start to end
     path.reverse()
-    # def simplify_path(path, tolerance=1.0):
-    #     # Convert path to LineString object
-    #     line = LineString(path)
+    def simplify_path(path, tolerance=1.0):
+        # Convert path to LineString object
+        line = LineString(path)
         
-    #     # Simplify the line
-    #     simplified_line = line.simplify(tolerance, preserve_topology=False)
+        # Simplify the line
+        simplified_line = line.simplify(tolerance, preserve_topology=False)
         
-    #     # Convert simplified line back to list of tuples
-    #     simplified_path = list(simplified_line.coords)
+        # Convert simplified line back to list of tuples
+        simplified_path = list(simplified_line.coords)
         
-    #     return simplified_path
+        return simplified_path
 
 
-    # simplified_path = simplify_path(path)
-    # return simplified_path
-    return path
-
+    simplified_path = simplify_path(path)
+    return simplified_path
+    # return path
         
     # for x, y in path:
     #     print(f"({x}, {y})")
