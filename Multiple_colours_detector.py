@@ -12,6 +12,7 @@ import BREADTH_FIRST_prototype as bf
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
 import PID_controller as pid
+import time
 
 test_hue = None
 start = None
@@ -191,27 +192,37 @@ if __name__ == "__main__":
     
     randpunten =[[0,0],[0,w],[h,0],[h,w]]
 
-    print(randpunten)
-    # randpunten =[(x,y),(x+w,y)]
-    for i in range(len(randpunten)):
-            cv2.circle(color_frame, (randpunten[i][1], randpunten[i][0]), 15, (255,0,0), 3) 
-    print('shape',crop.shape)
+    # bit_crop = np.logical_not(padcrop)
     
-    gray_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-    _, bit_crop = cv2.threshold(gray_crop, 127, 255, cv2.THRESH_BINARY)
-    skelet_crop = skeletonize(bit_crop)
-    randen_groen = find_closest_skeleton_point_with_kdtree(randpunten, crop)
+    # cropskelet = skeletonize(bit_crop)
+    # cropskelet_int = (cropskelet.astype(np.uint8))*255
+    # cropskelet_final = cv2.dilate(cropskelet_int, kernel, iterations=1)
+    
+    
+    randen_groen = find_closest_skeleton_point_with_kdtree(randpunten, crop) #ipv crop kan cropskelet_final ook gebruikt worden, maar dan geeft hij het getransformeerd beeld te ingezoomd weer, je zou dus dimensies daarvan nog moeten aanpassen. 
     randen_groen = [list(i) for i in randen_groen]
+    print(randpunten, randen_groen)
     
-
+    #Cirkels tekenen:
+    for i in range(len(randpunten)):
+                cv2.circle(color_frame, (randpunten[i][1], randpunten[i][0]), 15, (255,0,0), 3) 
     for i in range(len(randen_groen)):
-        cv2.circle(color_frame, (randen_groen[i][1], randen_groen[i][0]), 20, (0,255,0), 3) 
+        cv2.circle(color_frame, (randen_groen[i][1], randen_groen[i][0]), 5, (0,255,255), 5) 
+        
     randpunten = np.array(randpunten, dtype=np.float32)
     randen_groen = np.array(randen_groen, dtype=np.float32)
-    matrix = cv2.getPerspectiveTransform(randen_groen, randpunten)
-    result = cv2.warpPerspective(color_frame, matrix, (len(color_frame[0]), len(color_frame)))
-    
 
+    Omgekeerde_randpunten = np.array([[x,y] for y ,x in randpunten])
+    Omgekeerde_randen_groen = np.array([[x,y] for y ,x in randen_groen])
+    
+    start_time = time.time()
+
+    matrix = cv2.getPerspectiveTransform(Omgekeerde_randen_groen, Omgekeerde_randpunten)
+    result = cv2.warpPerspective(color_frame, matrix, (len(color_frame[0]), len(color_frame)))
+
+    elapsed_time = time.time() - start_time
+    print(f"Elapsed time for getPerspectiveTransform and warpPerspective: {elapsed_time} seconds")
+   
     cv2.imshow("Video Feed", result)
     cv2.waitKey(100000)
 
