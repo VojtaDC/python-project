@@ -94,7 +94,7 @@ def balldetection(frame):
 if __name__ == "__main__":
     # Maak een nieuw venster
     cv2.namedWindow("Video Feed")
-    
+
     # Stel de muiscallback functie in op get_position
     cv2.setMouseCallback("Video Feed", get_position)
     #######
@@ -252,7 +252,8 @@ if __name__ == "__main__":
         #to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    cv2.imshow("Video Feed", color_frame)
+    
+        
     print(end)
     
     start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
@@ -266,7 +267,7 @@ if __name__ == "__main__":
     
     path = bf.print_shortest_path(distances, start, end)
     checkpoints = path.copy()
-
+    print('checkpoints = ', checkpoints[0:5])
 
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
 
@@ -279,20 +280,7 @@ if __name__ == "__main__":
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 1)
 
-    cv2.imshow("Video Feed", color_frame)
 
-    while False:
-     
-        #cv2.imshow("Frame", frame)
-        
-        # cv2.imshow("Video Feed", )
-        # start = crop
-        
-        cv2.imshow("Video Feed", crop)
-    
-        #to quit
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
     
     print('nu wachten we')
     cv2.waitKey(100)
@@ -301,26 +289,53 @@ if __name__ == "__main__":
     
     start_time2 = time.time()
     time_overload = 0
+    # while True:
+    #     cv2.imshow("Video Feed", color_frame)
+    #     if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         break
     while checkpoints:
         _, frame = cap.read()
         
-        # cirkel_coord = balldetection(frame)
-        # Lijst_cirkels.append(cirkel_coord)
-        # cv2.circle(frame, (int(cirkel_coord[0]), int(cirkel_coord[1])), int(r), (0,0,0), 3)
+        #Omzetten frame naar crop:
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
-        
-        #cv2.imshow("Frame", frame)
-        cv2.imshow("Video Feed", frame)
-        #to quit
-        if abs(cirkel_coord[0] - checkpoints[0][0] < 10 and cirkel_coord[1]- checkpoints[0][1] < 10):
-            checkpoints.pop(0)
+        red_mask = cv2.inRange(hsv_frame, x_ranges[0], x_ranges[1])
+        if x_ranges[2] is not None:
+            mask2 = cv2.inRange(hsv_frame, x_ranges[2], x_ranges[3])
+            red_mask += mask2
             
-        if time.time() - start_time2 > time_overload:
-            pid.PIDcontroller(Lijst_cirkels[-1], checkpoints)
-            time_overload += 3000
+        red_mask = cv2.erode(red_mask, kernel, iterations=1)
+        red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
+        red_mask = cv2.dilate(red_mask, kernel, iterations=6)
+        red_mask = cv2.erode(red_mask, kernel, iterations=2)
+        
+        # Assuming red_mask is your image
+        coords = cv2.findNonZero(red_mask)
+        x, y, w, h = cv2.boundingRect(coords)
+        print('coords',x,y,h,w)
+        # Crop the image to the found coordinates
+
+        crop = frame[y:y+h, x:x+w]
+        
+        Lijst_cirkels = balldetection(frame)
+        # Lijst_cirkels.append(cirkel_coord)
+        cv2.circle(color_frame, (int(Lijst_cirkels[0][0]), int(Lijst_cirkels[0][1])), 1, (0,255,0), 10)
+        print(Lijst_cirkels)
+        cv2.imshow("Video Feed", color_frame)
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        time.sleep(0.2)
+        #cv2.imshow("Frame", frame)
+        #to quit
+        # if abs(cirkel_coord[0] - checkpoints[0][0] < 10 and cirkel_coord[1]- checkpoints[0][1] < 10):
+        #     checkpoints.pop(0)
+            
+        # if time.time() - start_time2 > time_overload:
+        #     pid.PIDcontroller(Lijst_cirkels[-1], checkpoints)
+        #     time_overload += 3000
+        
+
     cv2.waitKey(100000)
     cv2.destroyAllWindows()
     
