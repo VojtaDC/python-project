@@ -1,4 +1,3 @@
 {
-    "sketch": "../../Documents/Arduino/dashboard/dashboard.ino",
     "board": "arduino:avr:uno"
 }

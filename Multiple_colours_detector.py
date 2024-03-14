@@ -105,8 +105,8 @@ if __name__ == "__main__":
     kernel = np.ones((3,3), np.uint8)
     
     # # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
-    # ret, foto = cap.read()
-    foto = cv2.imread("/Users/vojtadeconinck/Downloads/python-project/Schuinefoto.jpg")
+    ret, foto = cap.read()
+    # foto = cv2.imread("/Users/vojtadeconinck/Downloads/python-project/Schuinefoto.jpg")
 
     # # Converteer de afbeelding naar grijstinten
     # gray = cv2.cvtColor(foto, cv2.COLOR_BGR2GRAY)
@@ -125,13 +125,13 @@ if __name__ == "__main__":
 
     # foto = img2
 
-    frame = cv2.GaussianBlur(foto, (5,5), 0)
+    # frame = cv2.GaussianBlur(foto, (5,5), 0)
   
 
     while test_hue is None:
         
-        # _, frame = cap.read()
-        cirkel_coord = balldetection(frame)
+        _, frame = cap.read()
+        # cirkel_coord = balldetection(frame)
         # cv2.circle(frame, (int(cirkel_coord[0]), int(cirkel_coord[1])), int(r), (0,0,0), 3)
         
         #cv2.imshow("Frame", frame)
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         #to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-         
+    print('ja')
     x_ranges = color_ranges(test_hue)
     
     crop = None
@@ -154,6 +154,11 @@ if __name__ == "__main__":
     if x_ranges[2] is not None:
         mask2 = cv2.inRange(hsv_frame, x_ranges[2], x_ranges[3])
         red_mask += mask2
+        
+    red_mask = cv2.erode(red_mask, kernel, iterations=1)
+    red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
+    red_mask = cv2.dilate(red_mask, kernel, iterations=6)
+    red_mask = cv2.erode(red_mask, kernel, iterations=2)
     
     # Assuming red_mask is your image
     coords = cv2.findNonZero(red_mask)
@@ -177,7 +182,7 @@ if __name__ == "__main__":
     cv2.setMouseCallback("Video Feed", pos_start)
     
     # Bepaal de grootte van de tekst
-    (text_width, text_height) = cv2.getTextSize("KLIK OP START", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
+    (text_width, text_height) = cv2.getTextSize("KLIK OP STARTPUNT", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
     
     # Bepaal de positie van de tekst
     text_x = int(len(crop[0])*0.4)
@@ -223,8 +228,8 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"Elapsed time for getPerspectiveTransform and warpPerspective: {elapsed_time} seconds")
    
-    cv2.imshow("Video Feed", result)
-    cv2.waitKey(100000)
+    # cv2.imshow("Video Feed", result)
+    # cv2.waitKey(100000)
 
     
     
@@ -247,6 +252,7 @@ if __name__ == "__main__":
         #to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+    cv2.imshow("Video Feed", color_frame)
     print(end)
     
     start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
@@ -297,9 +303,11 @@ if __name__ == "__main__":
     time_overload = 0
     while checkpoints:
         _, frame = cap.read()
-        cirkel_coord = balldetection(frame)
-        Lijst_cirkels.append(cirkel_coord)
-        cv2.circle(frame, (int(cirkel_coord[0]), int(cirkel_coord[1])), int(r), (0,0,0), 3)
+        
+        # cirkel_coord = balldetection(frame)
+        # Lijst_cirkels.append(cirkel_coord)
+        # cv2.circle(frame, (int(cirkel_coord[0]), int(cirkel_coord[1])), int(r), (0,0,0), 3)
+        
         
         #cv2.imshow("Frame", frame)
         cv2.imshow("Video Feed", frame)
@@ -313,7 +321,7 @@ if __name__ == "__main__":
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    
+    cv2.waitKey(100000)
     cv2.destroyAllWindows()
     
     #Voor centreren: centerlines --> Lloris zegt: vindt een vorm en pakt dan het midden van de vorm git config --global --edit
