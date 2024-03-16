@@ -13,6 +13,7 @@ from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
 import PID_controller as pid
 import time
+# import serieleTest as st
 
 test_hue = None
 start = None
@@ -41,30 +42,35 @@ def pos_end(event, x, y, flags, color):
         global end
         end = (y, x)
 
-def color_ranges(test_color):
+def color_ranges(test_hue):
+    # Pas de saturation en value bereiken aan om zwarte en zeer donkere kleuren uit te sluiten
+    saturation_threshold = 120
+    value_threshold = 100
+
     if test_hue > 165:
-        lower_red = np.array([0, 50, 20]) 
+        lower_red = np.array([0, saturation_threshold, value_threshold]) 
         upper_red = np.array([test_hue-165, 255, 255])
         
-        lower_red2 = np.array([test_hue-15, 50, 20]) 
+        lower_red2 = np.array([test_hue-15, saturation_threshold, value_threshold]) 
         upper_red2 = np.array([180, 255, 255])
         
         return lower_red, upper_red, lower_red2, upper_red2
     
     # Range for upper range
     elif test_hue < 15:
-        lower_red = np.array([0, 50, 20]) 
+        lower_red = np.array([0, saturation_threshold, value_threshold]) 
         upper_red = np.array([test_hue+15, 255, 255])
         
-        lower_red2 = np.array([180-test_hue, 50, 20]) 
+        lower_red2 = np.array([180-test_hue, saturation_threshold, value_threshold]) 
         upper_red2 = np.array([180, 255, 255])
         
         return lower_red, upper_red, lower_red2, upper_red2
     else:
-        lower_red = np.array([test_hue-15, 50, 20]) 
+        lower_red = np.array([test_hue-15, saturation_threshold, value_threshold]) 
         upper_red = np.array([test_hue+15, 255, 255])
         
         return lower_red, upper_red, None, None
+
     
 def find_closest_skeleton_point_with_kdtree(path, padskelet):
     # Neem alle punten van padskelet 
@@ -80,13 +86,22 @@ def find_closest_skeleton_point_with_kdtree(path, padskelet):
         closest_skeleton_point = tuple(skeleton_points[index])
         closest_points.append(closest_skeleton_point)
 
-    return closest_points
+    return closest_points   
 
-def balldetection(frame):
+def Bballdetection(frame):
+    coordinates = []
     newimg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 2000, param1=200, param2= 20, minRadius=40, maxRadius=80)
-    return circles[0]
-
+    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 200, param1=100, param2= 40, minRadius=3, maxRadius=30)
+    if circles is not None:
+        for x, y, r in circles[0]:
+            cv2.circle(frame, (int(x), int(y)), int(r), (0,0,0), 3)
+            coordinates.append((x,y,r))
+        # print('aaaaaaaaa')
+        return coordinates
+    
+    else:
+        print("none")
+        return None
     
     
         
@@ -100,7 +115,7 @@ if __name__ == "__main__":
     #######
     
     # setup webcam feed 
-    cap = cv2.VideoCapture(0)  # Change this line to capture video from webcam
+    cap = cv2.VideoCapture(1)  # Change this line to capture video from webcam
     
     kernel = np.ones((3,3), np.uint8)
     
@@ -163,7 +178,7 @@ if __name__ == "__main__":
     # Assuming red_mask is your image
     coords = cv2.findNonZero(red_mask)
     x, y, w, h = cv2.boundingRect(coords)
-    print('coords',x,y,h,w)
+    print('coordinatVOOR = ', x,y,w,h)
     # Crop the image to the found coordinates
 
     crop = red_mask[y:y+h, x:x+w]
@@ -266,38 +281,54 @@ if __name__ == "__main__":
     print(f"Elapsed time: {elapsed_time} seconds")
     
     path = bf.print_shortest_path(distances, start, end)
-    checkpoints = path.copy()
-    print('checkpoints = ', checkpoints[0:5])
+    checkpoints_float = path.copy()
+    checkpoints = [tuple(int(x) for x in tup) for tup in checkpoints_float]
+    
+    # print('checkpoints = ', checkpoints[0:5])
 
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
 
 
     for i in range(len(path) - 1):
-        x , y = path[i]
-        point1 = (int(y), int(x))
-        x , y = path[i + 1]
-        point2 = (int(y), int(x))
+        x_p , y_p = path[i]
+        point1 = (int(y_p), int(x_p))
+        x_p , y_p = path[i + 1]
+        point2 = (int(y_p), int(x_p))
         cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
         cv2.circle(color_frame, point1, 4, (0,255,0), 1)
 
 
     
     print('nu wachten we')
-    cv2.waitKey(100)
+
     
     Lijst_cirkels = []
     
     start_time2 = time.time()
-    time_overload = 0
+    time_overload = 3.0
     # while True:
     #     cv2.imshow("Video Feed", color_frame)
     #     if cv2.waitKey(1) & 0xFF == ord('q'):
     #         break
+
+    
+    Lijst_cirkels = []
     while checkpoints:
         _, frame = cap.read()
-        
+        crop = frame[y-10:y+h+10, x-10:x+w+10]
+        # Stel dat checkpoints een lijst is van tuples, waarbij elke tuple de (x, y) coördinaten van een checkpoint bevat
+
+
+        # Teken een cirkel op elk checkpoint
+        for checkpoint in checkpoints:
+            cv2.circle(crop, checkpoint, radius=5, color=(0, 255, 0), thickness=-1)
+
+        # Teken een lijn tussen elk paar opeenvolgende checkpoints
+        for i in range(len(checkpoints) - 1):
+            cv2.line(crop, checkpoints[i], checkpoints[i+1], color=(0, 255, 0), thickness=2)
         #Omzetten frame naar crop:
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        hsv_frame = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+    
         
         red_mask = cv2.inRange(hsv_frame, x_ranges[0], x_ranges[1])
         if x_ranges[2] is not None:
@@ -306,34 +337,66 @@ if __name__ == "__main__":
             
         red_mask = cv2.erode(red_mask, kernel, iterations=1)
         red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
-        red_mask = cv2.dilate(red_mask, kernel, iterations=6)
-        red_mask = cv2.erode(red_mask, kernel, iterations=2)
+        red_mask = cv2.dilate(red_mask, kernel, iterations=2)
         
-        # Assuming red_mask is your image
-        coords = cv2.findNonZero(red_mask)
-        x, y, w, h = cv2.boundingRect(coords)
-        print('coords',x,y,h,w)
-        # Crop the image to the found coordinates
+        
 
-        crop = frame[y:y+h, x:x+w]
+        randpunten_live =[[0,0],[0,w],[h,0],[h,w]]
+
+        randen_groen = find_closest_skeleton_point_with_kdtree(randpunten_live, red_mask) #ipv crop kan cropskelet_final ook gebruikt worden, maar dan geeft hij het getransformeerd beeld te ingezoomd weer, je zou dus dimensies daarvan nog moeten aanpassen.
+        randen_groen = [list(i) for i in randen_groen]
+        print(randpunten_live, randen_groen)
+
+        #Cirkels tekenen:
+        # for i in range(len(randpunten_live)):
+        #     cv2.circle(crop, (randpunten_live[i][1], randpunten_live[i][0]), 15, (255,0,0), 3)
+        # for i in range(len(randen_groen)):
+        #     cv2.circle(crop, (randen_groen[i][1], randen_groen[i][0]), 5, (0,255,255), 5)
+
+        randpunten_live = np.array(randpunten_live, dtype=np.float32)
+        randen_groen = np.array(randen_groen, dtype=np.float32)
+
+
+        Omgekeerde_randen_groen = np.array([[x,y] for y ,x in randen_groen])
+
+        matrix = cv2.getPerspectiveTransform(Omgekeerde_randen_groen, Omgekeerde_randpunten)
+        result_live = cv2.warpPerspective(crop, matrix, (len(crop[0]), len(crop)))
+
+        # cv2.imshow("Video Feed", crop)
+        Cirkels_coordinaat = Bballdetection(result_live)
         
-        Lijst_cirkels = balldetection(frame)
+        if Cirkels_coordinaat is not None:
+            Cirkels_coordinaat[0] = tuple(int(x) for x in Cirkels_coordinaat[0])
+            Lijst_cirkels.append(Cirkels_coordinaat[0])
+            # print('CCCCC=',Cirkels_coordinaat[0], checkpoints[0] )
+            
         # Lijst_cirkels.append(cirkel_coord)
-        cv2.circle(color_frame, (int(Lijst_cirkels[0][0]), int(Lijst_cirkels[0][1])), 1, (0,255,0), 10)
-        print(Lijst_cirkels)
-        cv2.imshow("Video Feed", color_frame)
+        # cv2.circle(frame, (int(Lijst_cirkels[0][0]), int(Lijst_cirkels[0][1])), 10, (0,255,0), 2)
+        if Lijst_cirkels is not None:
+            print(Lijst_cirkels[-1])
+            cv2.circle(result_live, (Lijst_cirkels[-1][0], Lijst_cirkels[-1][1]), Lijst_cirkels[-1][2], (255,0,0), 3)
+        
+        cv2.imshow("Video Feed", result_live)
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        time.sleep(0.2)
-        #cv2.imshow("Frame", frame)
+        
+        print("hier")
+        
+        #onderstaande moet blijven:
+
         #to quit
-        # if abs(cirkel_coord[0] - checkpoints[0][0] < 10 and cirkel_coord[1]- checkpoints[0][1] < 10):
-        #     checkpoints.pop(0)
-            
-        # if time.time() - start_time2 > time_overload:
-        #     pid.PIDcontroller(Lijst_cirkels[-1], checkpoints)
-        #     time_overload += 3000
+        print(abs(Lijst_cirkels[-1][0] - checkpoints[0][1]), abs(Lijst_cirkels[-1][1]- checkpoints[0][0]))
+        print('lijst cirkels = ',Lijst_cirkels[-1][0], 'lijst checkpoints= ', checkpoints[0][0])
+        if abs(Lijst_cirkels[-1][0] - checkpoints[0][1]) < 10 and abs(Lijst_cirkels[-1][1]- checkpoints[0][0]) < 10:
+            checkpoints.pop(0)
+            print('checkpoint gepopt')
+
+        if int(time.time()*10)%10 == 0:
+            pid.PIDcontroller(Lijst_cirkels[-1][:2], checkpoints)
+            print("Opgeroepen PID")
+            time_overload += 3.0
+
         
 
     cv2.waitKey(100000)
