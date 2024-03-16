@@ -11,68 +11,71 @@ import serial
 import BREADTH_FIRST_prototype as bf
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
-import PID_controller as pid
+# import PID_controller as pid
 import time
 # import serieleTest as st
 
-test_hue = None
+hue_threshold = None
 start = None
 end = None
+crop = None
+x = None
+y = None
+w = None
+h = None
+kernel = np.ones((3,3), np.uint8)
 
-# Functie die wordt aangeroepen bij muisklik
-def get_position(event, x, y, flags, color):
-    global test_hue
+
+def get_position(event, x, y, flags, color): # Functie die wordt aangeroepen bij muisklik
+    global hue_threshold
     if event == cv2.EVENT_LBUTTONDOWN:  # Als er op de linkermuisknop wordt geklikt
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)  # Converteer het frame naar HSV
         color = hsv[y, x]  # Haal de kleur op van de pixel waarop is geklikt
-        global test_hue
-        test_hue = color[0]
+        global hue_threshold
+        hue_threshold = color[0]
         # print(color)
 
-def pos_start(event, x, y, flags, color):
+def pos_start(event, x, y, flags, color): #Geeft startcoordinaten bij muisklik
     global start
     if event == cv2.EVENT_LBUTTONDOWN:  # Als er op de linkermuisknop wordt geklikt
         global start
         start = (y, x)
 
 
-def pos_end(event, x, y, flags, color):
+def pos_end(event, x, y, flags, color): #Geeft eindcoordinaten bij muisklik
     global end
     if event == cv2.EVENT_LBUTTONDOWN:
         global end
         end = (y, x)
 
-def color_ranges(test_hue):
+def color_rangefilter(hue_threshold, saturation_threshold, value_threshold): #Geeft kleurinteval terug op basis van HSV_thresholds
     # Pas de saturation en value bereiken aan om zwarte en zeer donkere kleuren uit te sluiten
-    saturation_threshold = 120
-    value_threshold = 100
-
-    if test_hue > 165:
+    if hue_threshold > 165:
         lower_red = np.array([0, saturation_threshold, value_threshold]) 
-        upper_red = np.array([test_hue-165, 255, 255])
+        upper_red = np.array([hue_threshold-165, 255, 255])
         
-        lower_red2 = np.array([test_hue-15, saturation_threshold, value_threshold]) 
+        lower_red2 = np.array([hue_threshold-15, saturation_threshold, value_threshold]) 
         upper_red2 = np.array([180, 255, 255])
         
         return lower_red, upper_red, lower_red2, upper_red2
     
     # Range for upper range
-    elif test_hue < 15:
+    elif hue_threshold < 15:
         lower_red = np.array([0, saturation_threshold, value_threshold]) 
-        upper_red = np.array([test_hue+15, 255, 255])
+        upper_red = np.array([hue_threshold+15, 255, 255])
         
-        lower_red2 = np.array([180-test_hue, saturation_threshold, value_threshold]) 
+        lower_red2 = np.array([180-hue_threshold, saturation_threshold, value_threshold]) 
         upper_red2 = np.array([180, 255, 255])
         
         return lower_red, upper_red, lower_red2, upper_red2
     else:
-        lower_red = np.array([test_hue-15, saturation_threshold, value_threshold]) 
-        upper_red = np.array([test_hue+15, 255, 255])
+        lower_red = np.array([hue_threshold-15, saturation_threshold, value_threshold]) 
+        upper_red = np.array([hue_threshold+15, 255, 255])
         
         return lower_red, upper_red, None, None
 
     
-def find_closest_skeleton_point_with_kdtree(path, padskelet):
+def find_closest_skeleton_point_with_kdtree(path, padskelet): #Projectie van een lijst met punten op het dichtsbijzijnde padpunt
     # Neem alle punten van padskelet 
     skeleton_points = np.argwhere(padskelet == 255)
 
@@ -88,10 +91,10 @@ def find_closest_skeleton_point_with_kdtree(path, padskelet):
 
     return closest_points   
 
-def Bballdetection(frame):
+def Bballdetection(frame): #Geef lijst met alle cirkels op een frame
     coordinates = []
     newimg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 200, param1=100, param2= 40, minRadius=3, maxRadius=30)
+    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 200, param1=100, param2= 40, minRadius=3, maxRadius=20)
     if circles is not None:
         for x, y, r in circles[0]:
             cv2.circle(frame, (int(x), int(y)), int(r), (0,0,0), 3)
@@ -103,47 +106,103 @@ def Bballdetection(frame):
         print("none")
         return None
     
+def red_mask(frame, color_range, erode1, dilate, erode2): #
     
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Converteert van BGR naar HSV
+    
+    red_mask = cv2.inRange(hsv_frame, color_range[0], color_range[1])
+    if color_range[2] is not None: #Meerdere tinten van de geselecteerde kleur toevoegen
+        mask2 = cv2.inRange(hsv_frame, color_range[2], color_range[3])
+        red_mask += mask2
         
-
-if __name__ == "__main__":
-    # Maak een nieuw venster
-    cv2.namedWindow("Video Feed")
-
-    # Stel de muiscallback functie in op get_position
-    cv2.setMouseCallback("Video Feed", get_position)
-    #######
     
-    # setup webcam feed 
-    cap = cv2.VideoCapture(1)  # Change this line to capture video from webcam
     
-    kernel = np.ones((3,3), np.uint8)
-    
-    # # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
-    ret, foto = cap.read()
-    # foto = cv2.imread("/Users/vojtadeconinck/Downloads/python-project/Schuinefoto.jpg")
+    red_mask = cv2.erode(red_mask, kernel, iterations= erode1)
+    red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
+    red_mask = cv2.dilate(red_mask, kernel, iterations= dilate)
+    red_mask = cv2.erode(red_mask, kernel, iterations= erode2)
+    return red_mask
+def to_bitmap(frame):
+    bitmap = np.where(frame == 255, 1, 0) #Alle waarden die 255 zijn worden vervangen door 1, rest blijft onveranderd
+    return bitmap
 
+def to_inverse_bitmap(frame):
+    inverse_bitmap = np.where(frame == 255, 0, 1) #Alle waarden die 255 zijn worden vervangen door 0, andere pixels worden 1
+    return inverse_bitmap
+import numpy as np
+import cv2
+from skimage.morphology import skeletonize
+
+def skeletonize_frame(frame):
+    # Skeletonize the frame
+    skeleton = skeletonize(frame == 1)
+
+    # Convert the frame to uint8 and multiply by 255
+    frame = (skeleton.astype(np.uint8) * 255)
+
+    # Define the structuring element for the dilate operation
+    kernel = np.ones((3,3),np.uint8)
+
+    # Perform the dilate operation
+    frame = cv2.dilate(frame, kernel, iterations = 1)
+
+    return frame
+def crop(red_mask): 
+    global x
+    global y
+    global w
+    global h
+    
+    coords = cv2.findNonZero(red_mask)
+    x, y, w, h = cv2.boundingRect(coords)
+    crop = red_mask[y:y+h, x:x+w]
+    
+    # crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
+    return crop
+
+def red_converter(foto):
     # # Converteer de afbeelding naar grijstinten
-    # gray = cv2.cvtColor(foto, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(foto, cv2.COLOR_BGR2GRAY)
 
     # # Binariseer de afbeelding (maak de paden wit en de muren zwart)
-    # _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
 
     # # Maak een masker van de muren
-    # mask = binary == 0
+    mask = binary == 0
 
     # # Maak een kopie van de originele afbeelding
-    # img2 = foto.copy()
+    red_foto = foto.copy()
 
     # # Maak de muren rood in de kopie
-    # img2[mask] = [0, 0, 255]
+    red_foto[mask] = [0, 0, 255]
+    
+    return red_foto
+    
+def circle_plotter(frame, punten, dikte, straal, BGR):
+    for punt in punten:
+        cv2.circle(frame, punt, radius= straal, color= BGR, thickness= dikte)
+    return frame
+    
 
-    # foto = img2
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+if __name__ == "__main__":
+    
+    # Maak een nieuw venster
+    cv2.namedWindow("Video Feed")
+    # Stel de muiscallback functie in op get_position
+    cv2.setMouseCallback("Video Feed", get_position)
+    cap = cv2.VideoCapture(1)  #Webcam feed
+    
+    #_, foto = cap.read() #_ is boolean die aangeeft of frame succesvol gelezen is
+    
+    # # frame = cv2.imread('/Users/vojtadeconinck/Downloads/python-project/Labyrinth.jpeg')
 
     # frame = cv2.GaussianBlur(foto, (5,5), 0)
   
 
-    while test_hue is None:
+    while hue_threshold is None:
         
         _, frame = cap.read()
         # cirkel_coord = balldetection(frame)
@@ -155,44 +214,17 @@ if __name__ == "__main__":
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     print('ja')
-    x_ranges = color_ranges(test_hue)
     
-    crop = None
-    ## loop to continuously acquire frames from the webcam
+    kleur_intervallen = color_rangefilter(hue_threshold, 90, 150)
     
+    red_mask_startbeeld = red_mask(frame, kleur_intervallen, erode1 = 1, dilate=6, erode2=2)
     
-       # _, frame = cap.read()
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    crop = crop(red_mask_startbeeld) #cropt met globale x,y,h,w
     
+    inverse_bitcrop = to_inverse_bitmap(crop) #255 wordt 0 en 0 wordt 1
     
-    red_mask = cv2.inRange(hsv_frame, x_ranges[0], x_ranges[1])
-    if x_ranges[2] is not None:
-        mask2 = cv2.inRange(hsv_frame, x_ranges[2], x_ranges[3])
-        red_mask += mask2
-        
-    red_mask = cv2.erode(red_mask, kernel, iterations=1)
-    red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
-    red_mask = cv2.dilate(red_mask, kernel, iterations=6)
-    red_mask = cv2.erode(red_mask, kernel, iterations=2)
+    padskelet = skeletonize_frame(inverse_bitcrop) #Maak pad dunner --> skelet
     
-    # Assuming red_mask is your image
-    coords = cv2.findNonZero(red_mask)
-    x, y, w, h = cv2.boundingRect(coords)
-    print('coordinatVOOR = ', x,y,w,h)
-    # Crop the image to the found coordinates
-
-    crop = red_mask[y:y+h, x:x+w]
-
-    # crop = cv2.resize(crop, None, fx = 0.5, fy = 0.5)
-    
-    # Skeletonize the image
-    padcrop = np.logical_not(crop)
-    padskelet = skeletonize(padcrop)
-    padskelet_int = (padskelet.astype(np.uint8))*255
-    
-    padskelet_final = cv2.dilate(padskelet_int, kernel, iterations=1)
-    
-    # cv2.imshow("Video Feed",     padskelet)
     #Roep functie op waar we begin en einde van de maze bepalen
     cv2.setMouseCallback("Video Feed", pos_start)
     
@@ -200,20 +232,19 @@ if __name__ == "__main__":
     (text_width, text_height) = cv2.getTextSize("KLIK OP STARTPUNT", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
     
     # Bepaal de positie van de tekst
-    text_x = int(len(crop[0])*0.4)
+    text_x = int(len(crop[0])*0.3)
     text_y = len(crop)//2
 
     color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
     
     # Teken een zwarte rechthoek achter de tekst
-    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 5, text_y - text_height - 5), (0, 0, 255), -1)
+    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width, text_y - text_height - 5), (0, 0, 255), -1)
     # Teken de tekst over de rechthoek
     cv2.putText(color_frame, "KLIK OP STARTPUNT", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
     
     randpunten =[[0,0],[0,w],[h,0],[h,w]]
 
     # bit_crop = np.logical_not(padcrop)
-    
     # cropskelet = skeletonize(bit_crop)
     # cropskelet_int = (cropskelet.astype(np.uint8))*255
     # cropskelet_final = cv2.dilate(cropskelet_int, kernel, iterations=1)
@@ -243,21 +274,16 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"Elapsed time for getPerspectiveTransform and warpPerspective: {elapsed_time} seconds")
    
-    # cv2.imshow("Video Feed", result)
-    # cv2.waitKey(100000)
-
-    
-    
     while start is None:
         #cv2.imshow("Frame", frame)
         cv2.imshow("Video Feed", color_frame)
         #to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    print(start)
-    (text_width, text_height) = cv2.getTextSize("KLIK OP EINDPUNT", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
-    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 5, text_y - text_height - 5), (0, 0, 255), -1)
-    cv2.putText(color_frame, "KLIK OP EINDPUNT", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
+    print("start= ", start)
+    (text_width, text_height) = cv2.getTextSize(" KLIK OP EINDPUNT", cv2.FONT_HERSHEY_SIMPLEX, 1, 5)[0]
+    cv2.rectangle(color_frame, (text_x - 5, text_y + 5), (text_x + text_width + 15, text_y - text_height - 5), (0, 0, 255), -1)
+    cv2.putText(color_frame, " KLIK OP EINDPUNT", (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 5)
 
     cv2.setMouseCallback("Video Feed", pos_end)
 
@@ -269,39 +295,39 @@ if __name__ == "__main__":
             break
     
         
-    print(end)
+    print("end =", end)
     
-    start = find_closest_skeleton_point_with_kdtree([start], padskelet_final)[0] #start projecteren op padskelet
-    end = find_closest_skeleton_point_with_kdtree([end], padskelet_final)[0] #end projecteren op padskelet
+    start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0] #start projecteren op padskelet
+    end = find_closest_skeleton_point_with_kdtree([end], padskelet)[0] #end projecteren op padskelet
     
     
     start_time = time.time()
-    distances = bf.breadth_first(padskelet_final, start, end)
+    distances = bf.breadth_first(padskelet, start, end)
     elapsed_time = time.time() - start_time
     print(f"Elapsed time: {elapsed_time} seconds")
-    
+    print("voor shortest path")
     path = bf.print_shortest_path(distances, start, end)
+    print("na shortest path")
+
     checkpoints_float = path.copy()
     checkpoints = [tuple(int(x) for x in tup) for tup in checkpoints_float]
+    print('checkpoints= ', checkpoints)
     
+   
     # print('checkpoints = ', checkpoints[0:5])
 
-    color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
+    # color_frame = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
 
+    # for i in range(len(path) - 1):
+    #     x_p , y_p = path[i]
+    #     point1 = (int(y_p), int(x_p))
+    #     x_p , y_p = path[i + 1]
+    #     point2 = (int(y_p), int(x_p))
+    #     cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
+    #     cv2.circle(color_frame, point1, 4, (0,255,0), 1)
 
-    for i in range(len(path) - 1):
-        x_p , y_p = path[i]
-        point1 = (int(y_p), int(x_p))
-        x_p , y_p = path[i + 1]
-        point2 = (int(y_p), int(x_p))
-        cv2.line(color_frame, point1, point2, (0, 0, 255), 2)
-        cv2.circle(color_frame, point1, 4, (0,255,0), 1)
-
-
-    
     print('nu wachten we')
 
-    
     Lijst_cirkels = []
     
     start_time2 = time.time()
@@ -312,38 +338,26 @@ if __name__ == "__main__":
     #         break
 
     
-    Lijst_cirkels = []
     while checkpoints:
         _, frame = cap.read()
         crop = frame[y-10:y+h+10, x-10:x+w+10]
         # Stel dat checkpoints een lijst is van tuples, waarbij elke tuple de (x, y) coördinaten van een checkpoint bevat
 
+        circle_plotter(crop, checkpoints,-1,5,(0, 255, 0))  # Teken een cirkel op elk checkpoint
 
-        # Teken een cirkel op elk checkpoint
-        for checkpoint in checkpoints:
-            cv2.circle(crop, checkpoint, radius=5, color=(0, 255, 0), thickness=-1)
 
         # Teken een lijn tussen elk paar opeenvolgende checkpoints
         for i in range(len(checkpoints) - 1):
             cv2.line(crop, checkpoints[i], checkpoints[i+1], color=(0, 255, 0), thickness=2)
         #Omzetten frame naar crop:
-        hsv_frame = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-    
         
-        red_mask = cv2.inRange(hsv_frame, x_ranges[0], x_ranges[1])
-        if x_ranges[2] is not None:
-            mask2 = cv2.inRange(hsv_frame, x_ranges[2], x_ranges[3])
-            red_mask += mask2
-            
-        red_mask = cv2.erode(red_mask, kernel, iterations=1)
-        red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, kernel)
-        red_mask = cv2.dilate(red_mask, kernel, iterations=2)
-        
+        red_mask_crop = red_mask(crop, kleur_intervallen, 1, 2, 0)
+        cv2.circle(frame, (start), 6, (255,0,0), 3)
         
 
         randpunten_live =[[0,0],[0,w],[h,0],[h,w]]
 
-        randen_groen = find_closest_skeleton_point_with_kdtree(randpunten_live, red_mask) #ipv crop kan cropskelet_final ook gebruikt worden, maar dan geeft hij het getransformeerd beeld te ingezoomd weer, je zou dus dimensies daarvan nog moeten aanpassen.
+        randen_groen = find_closest_skeleton_point_with_kdtree(randpunten_live, red_mask_crop) #ipv crop kan cropskelet_final ook gebruikt worden, maar dan geeft hij het getransformeerd beeld te ingezoomd weer, je zou dus dimensies daarvan nog moeten aanpassen.
         randen_groen = [list(i) for i in randen_groen]
         print(randpunten_live, randen_groen)
 
@@ -369,15 +383,20 @@ if __name__ == "__main__":
             Cirkels_coordinaat[0] = tuple(int(x) for x in Cirkels_coordinaat[0])
             Lijst_cirkels.append(Cirkels_coordinaat[0])
             # print('CCCCC=',Cirkels_coordinaat[0], checkpoints[0] )
-            
+        
+
         # Lijst_cirkels.append(cirkel_coord)
         # cv2.circle(frame, (int(Lijst_cirkels[0][0]), int(Lijst_cirkels[0][1])), 10, (0,255,0), 2)
-        if Lijst_cirkels is not None:
+        if Lijst_cirkels:
             print(Lijst_cirkels[-1])
             cv2.circle(result_live, (Lijst_cirkels[-1][0], Lijst_cirkels[-1][1]), Lijst_cirkels[-1][2], (255,0,0), 3)
+            print(abs(Lijst_cirkels[-1][0] - checkpoints[0][1]), abs(Lijst_cirkels[-1][1]- checkpoints[0][0]))
+            print('lijst cirkels = ',Lijst_cirkels[-1], 'lijst checkpoints= ', checkpoints[0])
+            if abs(Lijst_cirkels[-1][0] - checkpoints[0][0]) < 50 and abs(Lijst_cirkels[-1][1]- checkpoints[0][1]) < 50:
+                checkpoints.pop(0)
+                print('checkpoint gepopt')
         
         cv2.imshow("Video Feed", result_live)
-        
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         
@@ -386,14 +405,11 @@ if __name__ == "__main__":
         #onderstaande moet blijven:
 
         #to quit
-        print(abs(Lijst_cirkels[-1][0] - checkpoints[0][1]), abs(Lijst_cirkels[-1][1]- checkpoints[0][0]))
-        print('lijst cirkels = ',Lijst_cirkels[-1][0], 'lijst checkpoints= ', checkpoints[0][0])
-        if abs(Lijst_cirkels[-1][0] - checkpoints[0][1]) < 10 and abs(Lijst_cirkels[-1][1]- checkpoints[0][0]) < 10:
-            checkpoints.pop(0)
-            print('checkpoint gepopt')
+        
+        
 
         if int(time.time()*10)%10 == 0:
-            pid.PIDcontroller(Lijst_cirkels[-1][:2], checkpoints)
+            # pid.PIDcontroller(Lijst_cirkels[-1][:2], checkpoints)
             print("Opgeroepen PID")
             time_overload += 3.0
 

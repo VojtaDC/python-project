@@ -76,6 +76,7 @@ def print_shortest_path(distances, start, end):
 
 
     simplified_path = simplify_path(path)
+    simplified_path = [(y, x) for x, y in simplified_path]
     return simplified_path
     # return path
         

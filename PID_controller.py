@@ -26,10 +26,10 @@ def PIDcontroller(coordinaten, checkpoints):
     command_b_neutraal = f'B{140}\n'.encode()
     command_b_min = f'B{110}\n'.encode()
     
-    error_x = checkpoints[0][1] - coordinaten[0]
+    error_x = checkpoints[0][0] - coordinaten[0]
     print('error_x = ', error_x)
 
-    error_y = checkpoints[0][0] - coordinaten[1]
+    error_y = checkpoints[0][1] - coordinaten[1]
     print('error_y = ', error_y)
     
     print('PID')
