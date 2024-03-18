@@ -11,7 +11,7 @@ import serial
 import BREADTH_FIRST_prototype as bf
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
-# import PID_controller as pid
+import PID_controller as pid
 import time
 # import serieleTest as st
 
@@ -94,7 +94,7 @@ def find_closest_skeleton_point_with_kdtree(path, padskelet): #Projectie van een
 def Bballdetection(frame): #Geef lijst met alle cirkels op een frame
     coordinates = []
     newimg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 200, param1=100, param2= 40, minRadius=3, maxRadius=20)
+    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 20000, param1=100, param2= 40, minRadius=8, maxRadius=20)
     if circles is not None:
         for x, y, r in circles[0]:
             cv2.circle(frame, (int(x), int(y)), int(r), (0,0,0), 3)
@@ -215,7 +215,7 @@ if __name__ == "__main__":
             break
     print('ja')
     
-    kleur_intervallen = color_rangefilter(hue_threshold, 90, 150)
+    kleur_intervallen = color_rangefilter(hue_threshold, 100, 120)
     
     red_mask_startbeeld = red_mask(frame, kleur_intervallen, erode1 = 1, dilate=6, erode2=2)
     
@@ -389,29 +389,30 @@ if __name__ == "__main__":
         # cv2.circle(frame, (int(Lijst_cirkels[0][0]), int(Lijst_cirkels[0][1])), 10, (0,255,0), 2)
         if Lijst_cirkels:
             print(Lijst_cirkels[-1])
+            straal = Lijst_cirkels[-1][2]
+            
             cv2.circle(result_live, (Lijst_cirkels[-1][0], Lijst_cirkels[-1][1]), Lijst_cirkels[-1][2], (255,0,0), 3)
             print(abs(Lijst_cirkels[-1][0] - checkpoints[0][1]), abs(Lijst_cirkels[-1][1]- checkpoints[0][0]))
             print('lijst cirkels = ',Lijst_cirkels[-1], 'lijst checkpoints= ', checkpoints[0])
-            if abs(Lijst_cirkels[-1][0] - checkpoints[0][0]) < 50 and abs(Lijst_cirkels[-1][1]- checkpoints[0][1]) < 50:
+            
+            if abs(Lijst_cirkels[-1][0] - checkpoints[0][0]) < 2*straal and abs(Lijst_cirkels[-1][1]- checkpoints[0][1]) < 2*straal:
                 checkpoints.pop(0)
                 print('checkpoint gepopt')
-        
+            if int(time.time()*10)%10 == 0:
+                pid.PIDcontroller(Lijst_cirkels[-1][:2], checkpoints, len(result_live))
+                print("Opgeroepen PID")
+                time_overload += 3.0
+            
         cv2.imshow("Video Feed", result_live)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         
         print("hier")
-        
         #onderstaande moet blijven:
 
         #to quit
         
         
-
-        if int(time.time()*10)%10 == 0:
-            # pid.PIDcontroller(Lijst_cirkels[-1][:2], checkpoints)
-            print("Opgeroepen PID")
-            time_overload += 3.0
 
         
 

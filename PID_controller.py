@@ -1,59 +1,40 @@
-
-error_x = 0
-error_y = 0
-#prev_error_x = 0
-#prev_error_y = 0
-#integral_x = 0.0
-#Ki_x = 0.5
-#Ki_y = 0.5
-#Kp_x = 4.0
-#Kp_y = 4.0
-#dutycycle_x = 0
-#dutycycle_y = 0
-
 import serial
 import time
 
-ser = serial.Serial('/dev/tty.usbmodem1401', 9600, timeout=1)
+ser = serial.Serial('/dev/tty.usbmodem11101', 9600, timeout=1)
 
+def calculate_servo_position(error, min_pos, max_pos, min_error, max_error):
+    if abs(error) < min_error:
+        return (min_pos + max_pos) // 2  # Neutraal als de fout klein is
+    else:
+        # Schaal de fout binnen het servo bereik
+        scale = (max_pos - min_pos) / (max_error - min_error)
+        position = (min_pos + max_pos) // 2 + scale * min(max(error, -max_error), max_error)
+        return int(constrain(position, min_pos, max_pos))
 
-def PIDcontroller(coordinaten, checkpoints):
+def constrain(val, min_val, max_val):
+    return min(max_val, max(min_val, val))
+
+def PIDcontroller(coordinaten, checkpoints, size):
+    min_error = size / 15
+    max_error = size / 2
     
-    command_a_plus = f'A{150}\n'.encode()
-    command_a_neutraal = f'A{118}\n'.encode()
-    command_a_min = f'A{84}\n'.encode()
-    command_b_plus = f'B{170}\n'.encode()
-    command_b_neutraal = f'B{140}\n'.encode()
-    command_b_min = f'B{110}\n'.encode()
-    
-    error_x = checkpoints[0][0] - coordinaten[0]
+    error_x = coordinaten[0] - checkpoints[0][0]
     print('error_x = ', error_x)
 
     error_y = checkpoints[0][1] - coordinaten[1]
     print('error_y = ', error_y)
     
-    print('PID')
-    if error_x > 20:
-        # ser.write(command_b_plus)
-        ser.write(('B-' + '\n').encode())
-        print(command_b_plus)
-    if error_x < -20:
-        # ser.write(command_b_min)
-        ser.write(('B+' + '\n').encode())
-        print(command_b_min)
+    # Bereken servo posities
+    servo_a_pos = calculate_servo_position(error_y, 90, 150, min_error, max_error)
+    servo_b_pos = calculate_servo_position(error_x, 112, 172, min_error, max_error)
+    
+    # Stuur commando's naar de servo's
+    command_a = f'A{str(servo_a_pos).zfill(3)}\n'.encode()
+    command_b = f'B{str(servo_b_pos).zfill(3)}\n'.encode()
 
-    if error_y > 20:
-        # ser.write(command_a_plus)
-        ser.write(('A+' + '\n').encode())
-        print(command_a_plus)
-    if error_y < -20:
-        # ser.write(command_a_min)
-
-        ser.write(('A-' + '\n').encode())
-        print(command_a_min)
+    ser.write(command_a)
+    ser.write(command_b)
+    print(f'Servo A naar {servo_a_pos}, Servo B naar {servo_b_pos}')
 
     return checkpoints
-#118 en 140 
-
-#MAX 150 172
-#MIN 84 110
