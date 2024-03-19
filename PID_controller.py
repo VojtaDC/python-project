@@ -16,8 +16,8 @@ def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
 def PIDcontroller(coordinaten, checkpoints, size):
-    min_error = size / 15
-    max_error = size / 2
+    min_error = size / 25
+    max_error = size /2
     
     error_x = coordinaten[0] - checkpoints[0][0]
     print('error_x = ', error_x)

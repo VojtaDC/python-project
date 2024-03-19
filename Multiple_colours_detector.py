@@ -89,12 +89,12 @@ def find_closest_skeleton_point_with_kdtree(path, padskelet): #Projectie van een
         closest_skeleton_point = tuple(skeleton_points[index])
         closest_points.append(closest_skeleton_point)
 
-    return closest_points   
+    return closest_points 
 
 def Bballdetection(frame): #Geef lijst met alle cirkels op een frame
     coordinates = []
     newimg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 20000, param1=100, param2= 40, minRadius=8, maxRadius=20)
+    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 20000, param1=70, param2= 40, minRadius=6, maxRadius=20)
     if circles is not None:
         for x, y, r in circles[0]:
             cv2.circle(frame, (int(x), int(y)), int(r), (0,0,0), 3)
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     cv2.namedWindow("Video Feed")
     # Stel de muiscallback functie in op get_position
     cv2.setMouseCallback("Video Feed", get_position)
-    cap = cv2.VideoCapture(1)  #Webcam feed
+    cap = cv2.VideoCapture(2)  #Webcam feed
     
     #_, foto = cap.read() #_ is boolean die aangeeft of frame succesvol gelezen is
     
@@ -337,7 +337,7 @@ if __name__ == "__main__":
     #     if cv2.waitKey(1) & 0xFF == ord('q'):
     #         break
 
-    
+    vorige_lengte_checkpoints = len(checkpoints)
     while checkpoints:
         _, frame = cap.read()
         crop = frame[y-10:y+h+10, x-10:x+w+10]
@@ -384,7 +384,7 @@ if __name__ == "__main__":
             Lijst_cirkels.append(Cirkels_coordinaat[0])
             # print('CCCCC=',Cirkels_coordinaat[0], checkpoints[0] )
         
-
+        
         # Lijst_cirkels.append(cirkel_coord)
         # cv2.circle(frame, (int(Lijst_cirkels[0][0]), int(Lijst_cirkels[0][1])), 10, (0,255,0), 2)
         if Lijst_cirkels:
@@ -402,7 +402,24 @@ if __name__ == "__main__":
                 pid.PIDcontroller(Lijst_cirkels[-1][:2], checkpoints, len(result_live))
                 print("Opgeroepen PID")
                 time_overload += 3.0
-            
+                
+            if len(checkpoints) != vorige_lengte_checkpoints:
+                vorige_lengte_checkpoints = len(checkpoints)
+
+            elif int(time.time())%15 == 0:
+                x,y,r = Lijst_cirkels[-1]
+                
+                start = y,x 
+                projectie_start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0]
+                print("projectie start check")
+                distances = bf.breadth_first(padskelet, projectie_start, end)
+                print("distances check")
+                path = bf.print_shortest_path(distances, projectie_start, end)
+                print("Shortest path check")
+                checkpoints = [tuple(int(x) for x in tup) for tup in path]
+                vorige_lengte_checkpoints = len(checkpoints)
+                
+                
         cv2.imshow("Video Feed", result_live)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
