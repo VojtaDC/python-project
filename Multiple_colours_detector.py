@@ -12,7 +12,8 @@ import BREADTH_FIRST_prototype as bf
 from skimage.morphology import skeletonize
 from scipy.spatial import KDTree
 import PID_controller as pid
-import time
+from multiprocessing import Process, Queue
+
 # import serieleTest as st
 
 hue_threshold = None
@@ -182,12 +183,20 @@ def circle_plotter(frame, punten, dikte, straal, BGR):
     for punt in punten:
         cv2.circle(frame, punt, radius= straal, color= BGR, thickness= dikte)
     return frame
+def bereken_en_update_pad(start, end, padskelet, result_queue):
+    projectie_start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0]
+    distances = bf.breadth_first(padskelet, projectie_start, end)
+    path = bf.print_shortest_path(distances, projectie_start, end)
+    checkpoints = [tuple(int(x) for x in tup) for tup in path]
+    result_queue.put(checkpoints)  # Zet het resultaat in de queue
     
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
 if __name__ == "__main__":
+    result_queue = Queue()
+    process = None
     
     # Maak een nieuw venster
     cv2.namedWindow("Video Feed")
@@ -403,22 +412,21 @@ if __name__ == "__main__":
                 print("Opgeroepen PID")
                 time_overload += 3.0
                 
+            if int(time.time()) % 5 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
+                if process is not None:
+                    # Haal resultaten op als het proces klaar is
+                    checkpoints = result_queue.get()  # Dit blokkeert totdat er een resultaat is
+                    vorige_lengte_checkpoints = len(checkpoints)
+                    print("Kortste pad bijgewerkt")
+
+                # Start een nieuw proces
+                x, y, r = Lijst_cirkels[-1]
+                start = (y, x)
+                process = Process(target=bereken_en_update_pad, args=(start, end, padskelet, result_queue))
+                process.start()
             if len(checkpoints) != vorige_lengte_checkpoints:
                 vorige_lengte_checkpoints = len(checkpoints)
 
-            elif int(time.time())%15 == 0:
-                x,y,r = Lijst_cirkels[-1]
-                
-                start = y,x 
-                projectie_start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0]
-                print("projectie start check")
-                distances = bf.breadth_first(padskelet, projectie_start, end)
-                print("distances check")
-                path = bf.print_shortest_path(distances, projectie_start, end)
-                print("Shortest path check")
-                checkpoints = [tuple(int(x) for x in tup) for tup in path]
-                vorige_lengte_checkpoints = len(checkpoints)
-                
                 
         cv2.imshow("Video Feed", result_live)
         if cv2.waitKey(1) & 0xFF == ord('q'):
