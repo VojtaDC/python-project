@@ -16,8 +16,8 @@ def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
 def PIDcontroller(coordinaten, checkpoints, size):
-    min_error = size / 25
-    max_error = size /2
+    min_error = size /30
+    max_error = size/4
     
     error_x = coordinaten[0] - checkpoints[0][0]
     print('error_x = ', error_x)
@@ -26,8 +26,8 @@ def PIDcontroller(coordinaten, checkpoints, size):
     print('error_y = ', error_y)
     
     # Bereken servo posities
-    servo_a_pos = calculate_servo_position(error_y, 90, 150, min_error, max_error)
-    servo_b_pos = calculate_servo_position(error_x, 112, 172, min_error, max_error)
+    servo_a_pos = calculate_servo_position(error_y, 100, 140, min_error, max_error)
+    servo_b_pos = calculate_servo_position(error_x, 122, 162, min_error, max_error)
     
     # Stuur commando's naar de servo's
     command_a = f'A{str(servo_a_pos).zfill(3)}\n'.encode()

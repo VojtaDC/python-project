@@ -95,10 +95,10 @@ def find_closest_skeleton_point_with_kdtree(path, padskelet): #Projectie van een
 def Bballdetection(frame): #Geef lijst met alle cirkels op een frame
     coordinates = []
     newimg = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 1, 20000, param1=70, param2= 40, minRadius=6, maxRadius=20)
+    circles = cv2.HoughCircles(newimg, cv2.HOUGH_GRADIENT, 0.1, 20000, param1=31, param2= 43, minRadius=8, maxRadius=25)
     if circles is not None:
         for x, y, r in circles[0]:
-            cv2.circle(frame, (int(x), int(y)), int(r), (0,0,0), 3)
+            # cv2.circle(frame, (int(x), int(y)), int(r), (0,0,0), 3)
             coordinates.append((x,y,r))
         # print('aaaaaaaaa')
         return coordinates
@@ -107,7 +107,7 @@ def Bballdetection(frame): #Geef lijst met alle cirkels op een frame
         print("none")
         return None
     
-def red_mask(frame, color_range, erode1, dilate, erode2): #
+def red_mask(frame, color_range, erode1, dilate, erode2): 
     
     hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Converteert van BGR naar HSV
     
@@ -187,7 +187,7 @@ def bereken_en_update_pad(start, end, padskelet, result_queue):
     projectie_start = find_closest_skeleton_point_with_kdtree([start], padskelet)[0]
     distances = bf.breadth_first(padskelet, projectie_start, end)
     path = bf.print_shortest_path(distances, projectie_start, end)
-    checkpoints = [tuple(int(x) for x in tup) for tup in path]
+    checkpoints = [tuple(int(x_t) for x_t in tup) for tup in path]
     result_queue.put(checkpoints)  # Zet het resultaat in de queue
     
 
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     cv2.namedWindow("Video Feed")
     # Stel de muiscallback functie in op get_position
     cv2.setMouseCallback("Video Feed", get_position)
-    cap = cv2.VideoCapture(2)  #Webcam feed
+    cap = cv2.VideoCapture(0)  #Webcam feed
     
     #_, foto = cap.read() #_ is boolean die aangeeft of frame succesvol gelezen is
     
@@ -224,7 +224,8 @@ if __name__ == "__main__":
             break
     print('ja')
     
-    kleur_intervallen = color_rangefilter(hue_threshold, 100, 120)
+    kleur_intervallen = color_rangefilter(hue_threshold, 70, 70)
+    print("kleur intervallen =", kleur_intervallen)
     
     red_mask_startbeeld = red_mask(frame, kleur_intervallen, erode1 = 1, dilate=6, erode2=2)
     
@@ -348,7 +349,10 @@ if __name__ == "__main__":
 
     vorige_lengte_checkpoints = len(checkpoints)
     while checkpoints:
-        _, frame = cap.read()
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to read frame")
+            break
         crop = frame[y-10:y+h+10, x-10:x+w+10]
         # Stel dat checkpoints een lijst is van tuples, waarbij elke tuple de (x, y) coördinaten van een checkpoint bevat
 
@@ -361,7 +365,7 @@ if __name__ == "__main__":
         #Omzetten frame naar crop:
         
         red_mask_crop = red_mask(crop, kleur_intervallen, 1, 2, 0)
-        cv2.circle(frame, (start), 6, (255,0,0), 3)
+
         
 
         randpunten_live =[[0,0],[0,w],[h,0],[h,w]]
@@ -380,7 +384,7 @@ if __name__ == "__main__":
         randen_groen = np.array(randen_groen, dtype=np.float32)
 
 
-        Omgekeerde_randen_groen = np.array([[x,y] for y ,x in randen_groen])
+        Omgekeerde_randen_groen = np.array([[x_o,y_o] for y_o ,x_o in randen_groen])
 
         matrix = cv2.getPerspectiveTransform(Omgekeerde_randen_groen, Omgekeerde_randpunten)
         result_live = cv2.warpPerspective(crop, matrix, (len(crop[0]), len(crop)))
@@ -389,7 +393,7 @@ if __name__ == "__main__":
         Cirkels_coordinaat = Bballdetection(result_live)
         
         if Cirkels_coordinaat is not None:
-            Cirkels_coordinaat[0] = tuple(int(x) for x in Cirkels_coordinaat[0])
+            Cirkels_coordinaat[0] = tuple(int(x_u) for x_u in Cirkels_coordinaat[0])
             Lijst_cirkels.append(Cirkels_coordinaat[0])
             # print('CCCCC=',Cirkels_coordinaat[0], checkpoints[0] )
         
@@ -412,18 +416,19 @@ if __name__ == "__main__":
                 print("Opgeroepen PID")
                 time_overload += 3.0
                 
-            if int(time.time()) % 5 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
+            if int(time.time()) % 10 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
+                print("chicken")
                 if process is not None:
                     # Haal resultaten op als het proces klaar is
                     checkpoints = result_queue.get()  # Dit blokkeert totdat er een resultaat is
                     vorige_lengte_checkpoints = len(checkpoints)
                     print("Kortste pad bijgewerkt")
-
-                # Start een nieuw proces
-                x, y, r = Lijst_cirkels[-1]
-                start = (y, x)
-                process = Process(target=bereken_en_update_pad, args=(start, end, padskelet, result_queue))
-                process.start()
+                if len(checkpoints) == vorige_lengte_checkpoints:
+                    # Start een nieuw proces
+                    x_l, y_l, r_l = Lijst_cirkels[-1]
+                    start = (y_l, x_l)
+                    process = Process(target=bereken_en_update_pad, args=(start, end, padskelet, result_queue))
+                    process.start()
             if len(checkpoints) != vorige_lengte_checkpoints:
                 vorige_lengte_checkpoints = len(checkpoints)
 
