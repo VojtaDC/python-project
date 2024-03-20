@@ -234,6 +234,11 @@ if __name__ == "__main__":
     inverse_bitcrop = to_inverse_bitmap(crop) #255 wordt 0 en 0 wordt 1
     
     padskelet = skeletonize_frame(inverse_bitcrop) #Maak pad dunner --> skelet
+    randbreedte = int(len(padskelet)/20)
+    padskelet[:randbreedte,:] == 0
+    padskelet[-randbreedte:,:] == 0
+    padskelet[:, :randbreedte] == 0
+    padskelet[:,-randbreedte:] == 0
     
     #Roep functie op waar we begin en einde van de maze bepalen
     cv2.setMouseCallback("Video Feed", pos_start)
@@ -416,7 +421,7 @@ if __name__ == "__main__":
                 print("Opgeroepen PID")
                 time_overload += 3.0
                 
-            if int(time.time()) % 10 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
+            if int(time.time()) % 8 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
                 print("chicken")
                 if process is not None:
                     # Haal resultaten op als het proces klaar is
@@ -429,8 +434,11 @@ if __name__ == "__main__":
                     start = (y_l, x_l)
                     process = Process(target=bereken_en_update_pad, args=(start, end, padskelet, result_queue))
                     process.start()
-            if len(checkpoints) != vorige_lengte_checkpoints:
-                vorige_lengte_checkpoints = len(checkpoints)
+                else:
+                    vorige_lengte_checkpoints = len(checkpoints)
+            # if vorige_lengte_checkpoints != len(checkpoints) and process is not None:
+            #     print("kalkoek")
+                # process.terminate()
 
                 
         cv2.imshow("Video Feed", result_live)

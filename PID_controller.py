@@ -2,7 +2,7 @@ import serial
 import time
 
 ser = serial.Serial('/dev/tty.usbmodem11101', 9600, timeout=1)
-
+teller = 0
 def calculate_servo_position(error, min_pos, max_pos, min_error, max_error):
     if abs(error) < min_error:
         return (min_pos + max_pos) // 2  # Neutraal als de fout klein is
@@ -32,9 +32,15 @@ def PIDcontroller(coordinaten, checkpoints, size):
     # Stuur commando's naar de servo's
     command_a = f'A{str(servo_a_pos).zfill(3)}\n'.encode()
     command_b = f'B{str(servo_b_pos).zfill(3)}\n'.encode()
-
+ 
     ser.write(command_a)
     ser.write(command_b)
+    time.sleep(0.350)
+
+    command_c = f'A{str(118)}\n'.encode()
+    command_d = f'B{str(142)}\n'.encode()
+    ser.write(command_c)
+    ser.write(command_d)
     print(f'Servo A naar {servo_a_pos}, Servo B naar {servo_b_pos}')
 
     return checkpoints
