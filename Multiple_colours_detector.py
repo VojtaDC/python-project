@@ -234,11 +234,12 @@ if __name__ == "__main__":
     inverse_bitcrop = to_inverse_bitmap(crop) #255 wordt 0 en 0 wordt 1
     
     padskelet = skeletonize_frame(inverse_bitcrop) #Maak pad dunner --> skelet
-    randbreedte = int(len(padskelet)/20)
-    padskelet[:randbreedte,:] == 0
-    padskelet[-randbreedte:,:] == 0
-    padskelet[:, :randbreedte] == 0
-    padskelet[:,-randbreedte:] == 0
+    randhoogte = int(len(padskelet)/25)
+    padskelet[:randhoogte,:] = 0
+    padskelet[-randhoogte:,:] = 0
+    randbreedte = int(len(padskelet[0])/25)
+    padskelet[:, :randbreedte] = 0
+    padskelet[:,-randbreedte:] = 0
     
     #Roep functie op waar we begin en einde van de maze bepalen
     cv2.setMouseCallback("Video Feed", pos_start)
@@ -352,7 +353,8 @@ if __name__ == "__main__":
     #     if cv2.waitKey(1) & 0xFF == ord('q'):
     #         break
 
-    vorige_lengte_checkpoints = len(checkpoints)
+    vorig_checkpoint = checkpoints[0]
+    index = 0
     while checkpoints:
         ret, frame = cap.read()
         if not ret:
@@ -421,24 +423,27 @@ if __name__ == "__main__":
                 print("Opgeroepen PID")
                 time_overload += 3.0
                 
-            if int(time.time()) % 8 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
+            if int(time.time()) % 1 == 0 and (process is None or not process.is_alive()): #Elke 5 seconden checken 
                 print("chicken")
                 if process is not None:
                     # Haal resultaten op als het proces klaar is
-                    checkpoints = result_queue.get()  # Dit blokkeert totdat er een resultaat is
-                    vorige_lengte_checkpoints = len(checkpoints)
+                    if not result_queue.empty():
+                        checkpoints2 = result_queue.get()
+                     # Dit blokkeert totdat er een resultaat is
                     print("Kortste pad bijgewerkt")
-                if len(checkpoints) == vorige_lengte_checkpoints:
+                if checkpoints[0] == vorig_checkpoint:
                     # Start een nieuw proces
                     x_l, y_l, r_l = Lijst_cirkels[-1]
                     start = (y_l, x_l)
                     process = Process(target=bereken_en_update_pad, args=(start, end, padskelet, result_queue))
                     process.start()
                 else:
-                    vorige_lengte_checkpoints = len(checkpoints)
-            # if vorige_lengte_checkpoints != len(checkpoints) and process is not None:
-            #     print("kalkoek")
-                # process.terminate()
+                    vorig_checkpoint = checkpoints[0]
+                index +=1
+                if (index%15) == 0:
+                    checkpoints = checkpoints2
+                    print("Kortste pad initialisatie")
+                    
 
                 
         cv2.imshow("Video Feed", result_live)
